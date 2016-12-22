@@ -1,0 +1,61 @@
+* Implementation
+** generate the headline file
+   It works!! good
+   #+BEGIN_SRC elisp
+   (setq aoh-tmp "c:/Users/luooofuq/Dropbox/org/notes.org")
+   (shell-command "C:/Perl64/bin/perl.exe make_headline.pl  c:/Users/luooofuq/Dropbox/org/notes.org>headlines/data1")
+   #+END_SRC
+   
+   #+RESULTS:
+   : 0
+   
+**  get the headlines from a file, and saved to ~eoh-headlines~, which is a list of (filename line-number headline-content).
+    #+BEGIN_SRC elisp
+  (defun get-string-from-file (filePath)
+    "Return filePath's file content."
+    (with-temp-buffer
+      (insert-file-contents filePath)
+      (buffer-string)))
+
+  (setq eoh-headlines nil)
+  (let ((debug-on-error t))
+    (setq eoh-headlines (read (get-string-from-file "headlines/data1")))
+    (message"%S"  (nth 423 eoh-headlines)))
+    #+END_SRC
+    
+    #+RESULTS:
+  : ("c:/Users/luooofuq/Dropbox/org/notes.org" 7834 "** [[http://www.zreading.cn/archives/4240.html][如何找到适合自己的读书方法]]   ")
+    
+**  process it with helm. 
+    can't goto the file.
+    #+BEGIN_SRC elisp
+    (setq eoh-tmp (mapcar (lambda (item)
+                            (cons (nth 2 item) item))
+                          eoh-headlines))
+
+    (defun eoh-goto-file-line (candidate)
+      (let ((file (nth 0 candidate))
+            (line (nth 1 candidate)))
+        (message "file: %s, line: %s" file line)
+        (helm-goto-file-line line "" file 'find-file-other-window)))
+    ;; (find-file-other-window file)
+    ;; (goto-line line)))
+
+    (setq some-helm-source
+          '((name . "HELM at the Emacs")
+            (candidates .  eoh-tmp)
+
+            (persistent-action . 'eoh-goto-file-line)
+
+            (action .
+                    (("Godo" . eoh-goto-file-line)
+                     ("Display" .  (lambda (candidate)
+                                     (message-box "%S" candidate)))
+                     ("None" . identify)
+                     ))
+            ))
+    (helm :sources '(some-helm-source))
+    #+END_SRC
+    
+    #+RESULTS:
+    
