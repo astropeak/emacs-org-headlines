@@ -10,10 +10,33 @@
    (defvar eoh-headlines-dir (format "%s/headlines" eoh-home-dir) "the generated files by perl are all saved under this dir")
    (defvar eoh-perl-script-name (format "%s/%s" eoh-home-dir "make_headline.pl") "the perl script that generate the headline files")
    (defvar eoh-files-file-name (format "%s/%s" eoh-home-dir "files") "The file is used to save the `eoh-files' variable")
+
+   ;; interface functions
+   (defvar eoh-generate-headlines-function 'eoh-generate-headlines-update "The generate headline file function")
+   (defvar eoh-load-headlines-function 'eoh-load-headlines-update "The load headlines function")
    #+END_SRC
    
    #+RESULTS: global-definition
    : eoh-files-file-name
+** config
+   config the functon interfaces
+   #+NAME: config
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
+   (defun eoh-config-update ()
+     (interactive)
+     (setq eoh-generate-headlines-function 'eoh-generate-headlines-update)
+     (setq eoh-load-headlines-function 'eoh-load-headlines-update)
+     )
+
+   (defun eoh-config-always ()
+     (interactive)
+     (setq eoh-generate-headlines-function 'eoh-generate-headlines-always)
+     (setq eoh-load-headlines-function 'eoh-load-headlines-always)
+     )
+   #+END_SRC
+   
+   #+RESULTS: config
+   : eoh-config-always
    
 ** init
    #+NAME: init--windows
@@ -80,20 +103,35 @@
    It works!! good
    
    #+NAME: generate-headlines
-   #+BEGIN_SRC elisp :comments org :comments org :tangle eoh.el
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
+   (defun eoh-generate-headlines-coolie (file)
+     "Generate for one single file. File is relative path to `eoh-base-dir'"
+     (let ((out (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
+       (message "Generate headline files. Input: %s, output: %s" file out)
+       (shell-command (format "%s %s  %s %s > %s" eoh-perl-executable eoh-perl-script-name eoh-base-dir file out))))
+
+
    (defun eoh-generate-headlines-always (files)
      "always re generate"
-     (mapcar (lambda(file)
-               (let ((out (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
-                 (message "Generate headline files. Input: %s, output: %s" file out)
-                 (shell-command (format "%s %s  %s %s > %s" eoh-perl-executable eoh-perl-script-name eoh-base-dir file out))))
+     (mapcar 'eoh-generate-headlines-coolie files))
+
+   (defun eoh-org-file-newer-p (file)
+     "Check if the org `file' is newer than the generated headline file"
+     (file-newer-than-file-p (format "%s/%s" eoh-base-dir file)
+                             (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
+
+   (defun eoh-generate-headlines-update (files)
+     "Re generate only when org file is newer than the generated file"
+     (mapcar (lambda (file)
+               (when (eoh-org-file-newer-p file)
+                 (eoh-generate-headlines-coolie file)))
              files))
    #+END_SRC
    
    #+RESULTS: generate-headlines
    : eoh-generate-headlines-always
    
-
+   
    #+NAME: test-generate-headlines
    #+BEGIN_SRC elisp :noweb yes
    <<global-definition>>
@@ -135,18 +173,42 @@
 **  get the headlines from a file, and saved to ~eoh-headlines~, which is a list of (filename line-number headline-content).
     #+NAME: load-headlines
     #+BEGIN_SRC elisp :comments org :tangle eoh.el
+    (defun eoh-load-headlines-coolier (file)
+      "Load the headlines in file, and return that list"
+      (message "Load headlines for file: %s" file)
+      (read (aspk-util-file-content-to-string
+             (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file)))))
+
     (defun eoh-load-headlines-always ()
       "always re load from all files in `eoh-headline-dir', and return as a list. The input is in the `eoh-files' global variable."
       (let ((rst nil))
         (mapc (lambda (file)
-                (setq rst (append 
-                           (read (aspk-util-file-content-to-string (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
-                           rst)))
-              eoh-files
-              )
+                (setq rst (append (eoh-load-headlines-coolier file) rst)))
+              eoh-files)
         rst))
+
+    (defvar eoh-loaded-headlines-time (make-hash-table :test 'equal) "Type: hash. Key: file name, value: time when this file is loaded")
+    (defvar eoh-loaded-headlines-value (make-hash-table :test 'equal) "Type: hash. Key: file name, value: this list for this file")
+
+    (defun aspk-util-file-modified-time (file)
+      "Get the seconds since epoc of the time when file is last modified"
+      (time-to-seconds (nth 5 (file-attributes file 'string))))
+
+    (defun eoh-load-headlines-update ()
+      "Only load from files in `eoh-headline-dir' if a file is newer than, and return as a list. The input is in the `eoh-files' global variable."
+      (let ((rst nil)
+            (time nil))
+        (mapc (lambda (file)
+                (setq time (aspk-util-file-modified-time
+                            (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
+                (when (< (gethash file eoh-loaded-headlines-time 0) time)
+                  (puthash file (eoh-load-headlines-coolier file) eoh-loaded-headlines-value)
+                  (puthash file time eoh-loaded-headlines-time))
+                (setq rst (append (gethash file eoh-loaded-headlines-value) rst)))
+              eoh-files)
+        rst))
+
     #+END_SRC
-    
     
     #+BEGIN_SRC elisp :noweb yes 
     <<global-definition>>
@@ -167,16 +229,16 @@
     
     #+NAME: load-headlines-deprecated
     #+BEGIN_SRC elisp
-  (defun get-string-from-file (filePath)
-    "Return filePath's file content."
-    (with-temp-buffer
-      (insert-file-contents filePath)
-      (buffer-string)))
+    (defun get-string-from-file (filePath)
+      "Return filePath's file content."
+      (with-temp-buffer
+        (insert-file-contents filePath)
+        (buffer-string)))
 
-  (setq eoh-headlines nil)
-  (let ((debug-on-error t))
-    (setq eoh-headlines (read (get-string-from-file "headlines/data1")))
-    (message"%S"  (nth 423 eoh-headlines)))
+    (setq eoh-headlines nil)
+    (let ((debug-on-error t))
+      (setq eoh-headlines (read (get-string-from-file "headlines/data1")))
+      (message"%S"  (nth 423 eoh-headlines)))
     #+END_SRC
     
     #+RESULTS:
@@ -287,19 +349,19 @@
    
 ** integrate
    #+BEGIN_SRC elisp :comments org :tangle eoh.el
-   (defun eoh-always ()
+   (defun eoh ()
      (interactive)
      (eoh-init)
      (eoh-load-files)
-     (eoh-generate-headlines-always eoh-files)
-     (setq eoh-headlines (eoh-load-headlines-always))
+     (funcall eoh-generate-headlines-function eoh-files)
+     (setq eoh-headlines (funcall eoh-load-headlines-function))
      (eoh-select)
      )
    #+END_SRC
-
+   
    #+RESULTS:
    : eoh-always
-
+   
    
 ** run
    
