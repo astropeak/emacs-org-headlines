@@ -1,7 +1,7 @@
 * Implementation
 ** global
    #+NAME: global-definition
-   #+BEGIN_SRC elisp
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
    (defvar eoh-base-dir (getenv "HOME") "The base dir for all files in `eoh-files'")
    (defvar eoh-files nil "Type: list; element: string(file full path name). the files should be searched for headings. This is the input to generate-headlines.")
    (defvar eoh-headlines nil "Type: list; element: list(file-name, line-no, heading)")
@@ -22,7 +22,7 @@
    #+END_SRC
    
    #+NAME: init
-   #+BEGIN_SRC elisp :noweb yes
+   #+BEGIN_SRC elisp :noweb yes :comments org :tangle eoh.el
    (defun eoh-init ()
      (cond
       (*win32* <<init--windows>>)
@@ -51,7 +51,7 @@
    
 ** util
    #+NAME: util
-   #+BEGIN_SRC elisp
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
    (defun aspk-util-file-name-to-string (name)
      "Convert a file full path name to a string without seperator so that it can be used as a base file name"
      (replace-regexp-in-string "/\\|\\\\" "-" name))
@@ -80,7 +80,7 @@
    It works!! good
    
    #+NAME: generate-headlines
-   #+BEGIN_SRC elisp :comments org
+   #+BEGIN_SRC elisp :comments org :comments org :tangle eoh.el
    (defun eoh-generate-headlines-always (files)
      "always re generate"
      (mapcar (lambda(file)
@@ -134,7 +134,7 @@
    
 **  get the headlines from a file, and saved to ~eoh-headlines~, which is a list of (filename line-number headline-content).
     #+NAME: load-headlines
-    #+BEGIN_SRC elisp
+    #+BEGIN_SRC elisp :comments org :tangle eoh.el
     (defun eoh-load-headlines-always ()
       "always re load from all files in `eoh-headline-dir', and return as a list. The input is in the `eoh-files' global variable."
       (let ((rst nil))
@@ -186,7 +186,7 @@
     can't goto the file.
     
     #+NAME: select-headlines
-    #+BEGIN_SRC elisp
+    #+BEGIN_SRC elisp :comments org :tangle eoh.el
     (defun eoh-goto-file-line (candidate)
       (let ((file (nth 0 candidate))
             (line (nth 1 candidate)))
@@ -231,7 +231,7 @@
     
 ** add files
    #+NAME: add-files
-   #+BEGIN_SRC elisp
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
    (defun eoh-add-file-single (file)
      "Add a file to `eoh-files', and remove the base part"
      (interactive "fFile: ")
@@ -286,22 +286,25 @@
    : ("Dropbox/project/emacs-org-headline/implementation.org")
    
 ** integrate
-   #+BEGIN_SRC elisp
+   #+BEGIN_SRC elisp :comments org :tangle eoh.el
    (defun eoh-always ()
-(interactive)
+     (interactive)
+     (eoh-init)
+     (eoh-load-files)
      (eoh-generate-headlines-always eoh-files)
      (setq eoh-headlines (eoh-load-headlines-always))
      (eoh-select)
      )
    #+END_SRC
-   
+
    #+RESULTS:
    : eoh-always
+
    
 ** run
    
    Deprecated
-   #+BEGIN_SRC elisp :noweb yes :tangle eoh.el :comments org
+   #+BEGIN_SRC elisp :noweb yes :comments org
    <<generate-headlines--windows>>
    <<load-headlines>>
    <<install-eoh-function>>
