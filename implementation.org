@@ -1,18 +1,117 @@
 * Implementation
+** global
+   #+NAME: global-definition
+   #+BEGIN_SRC elisp
+   (defvar eoh-base-dir (getenv "HOME") "The base dir for all files in `eoh-files'")
+   (defvar eoh-files nil "Type: list; element: string(file full path name). the files should be searched for headings. This is the input to generate-headlines.")
+   (defvar eoh-headlines nil "Type: list; element: list(file-name, line-no, heading)")
+   (defvar eoh-perl-executable "perl")
+(defvar eoh-home-dir (format "%s/%s" (getenv "HOME") ".emacs-org-headlines") "the data dir for the eoh applicaton. All generated headlines will be saved in this dir")
+(defvar eoh-headlines-dir (format "%s/headlines" eoh-home-dir) "the generated files by perl are all saved under this dir")
+(defvar eoh-perl-script-name "make_headline.pl" "the perl script that generate the headline files")
+   #+END_SRC
+** init
+   #+NAME: init--windows
+   #+BEGIN_SRC elisp
+   (setq eoh-perl-executable "C:/Perl64/bin/perl.exe")
+   #+END_SRC
+   
+   #+NAME: init
+   #+BEGIN_SRC elisp
+   (defun eoh-init ()
+     (cond
+      (*win32* <<init--windows>>)
+      )
+
+     ;; create the home dir
+     (unless (file-exists-p eoh-home-dir)
+       (message "Create eoh home dir: %s" eoh-home-dir)
+       (mkdir eoh-home-dir t))
+
+     ;; create the data dir
+     (unless (file-exists-p eoh-headlines-dir)
+       (message "Create eoh headlines dir: %s" eoh-headlines-dir)
+       (mkdir eoh-headlines-dir t))
+     )
+   #+END_SRC
+   
+   #+RESULTS: init
+   : eoh-init
+** util function
+   #+NAME: util
+   #+BEGIN_SRC elisp
+   (defun aspk-util-file-name-to-string (name)
+     "Convert a file full path name to a string without seperator so that it can be used as a base file name"
+     (replace-regexp-in-string "/\\|\\\\" "-" name))
+
+    (defun aspk-util-file-content-to-string (filePath)
+      "Return filePath's file content."
+      (with-temp-buffer
+        (insert-file-contents filePath)
+        (buffer-string)))
+   #+END_SRC
+   
+   #+RESULTS: util
+   : eoh-file-name-to-string
+   
+   #+NAME: util-test
+   #+BEGIN_SRC elisp :noweb yes
+   <<util>>
+   (eoh-file-name-to-string "./a/b\\c")
+   #+END_SRC
+   
+   #+RESULTS: util-test
+   : .-a-b-c
+   
+   
 ** generate the headline file
    It works!! good
    
+   #+NAME: generate-headlines
+   #+BEGIN_SRC elisp :comments org
+   (defun eoh-generate-headlines-always (files)
+     "always re generate"
+     (mapcar (lambda(file)
+               (let ((out (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
+                 (message "Generate headline files. Input: %s, output: %s" file out)
+                 (shell-command (format "%s %s  %s %s > %s" eoh-perl-executable eoh-perl-script-name eoh-base-dir file out))))
+             files))
+   #+END_SRC
+   
+   #+RESULTS: generate-headlines
+   : eoh-generate-headlines-always
+   
+   
+   #+NAME: test-generate-headlines
+   #+BEGIN_SRC elisp :noweb yes
+   <<global-definition>>
+   <<init>>
+   <<generate-headlines>>
+<<util>>
+   (eoh-init)
+   (setq eoh '("Dropbox/org/org.org" "Dropbox/org/kindle.org"))
+   (eoh-generate-headlines-always eoh)
+   #+END_SRC
+   
+   #+RESULTS: test-generate-headlines
+   | 0 | 0 |
+   
+   
+   #+RESULTS:
+   | 0 | 0 |
+   
+   Below are all deprecated.
+   
    For windows
-   #+BEGIN_SRC elisp
+   #+NAME: generate-headlines--windows
+   #+BEGIN_SRC elisp :comments org
    (setq aoh-tmp "c:/Users/luooofuq/Dropbox/org/notes.org")
    (shell-command "C:/Perl64/bin/perl.exe make_headline.pl  c:/Users/luooofuq/Dropbox/org/notes.org>headlines/data1")
    #+END_SRC
    
-   #+RESULTS:
-   : 0
-   
    
    For mac
+   #+NAME: generate-headlines--mac
    #+BEGIN_SRC elisp
    (setq aoh-tmp "c:/Users/luooofuq/Dropbox/org/notes.org")
    (shell-command "perl make_headline.pl  /Users/astropeak/Dropbox/org/notes.org>headlines/data1")
@@ -22,6 +121,39 @@
    : 0
    
 **  get the headlines from a file, and saved to ~eoh-headlines~, which is a list of (filename line-number headline-content).
+    #+NAME: load-headlines
+    #+BEGIN_SRC elisp
+    (defun eoh-load-headlines-always ()
+      "always re load from all files in `eoh-headline-dir', and return as a list. The input is in the `eoh-files' global variable."
+      (let ((rst nil))
+        (mapc (lambda (file)
+                (setq rst (append 
+                           (read (aspk-util-file-content-to-string (format "%s/%s" eoh-headlines-dir (aspk-util-file-name-to-string file))))
+                           rst)))
+              eoh-files
+              )
+        rst))
+    #+END_SRC
+    
+    
+    #+BEGIN_SRC elisp :noweb yes 
+    <<global-definition>>
+    <<util>>
+    <<load-headlines>>
+    (setq eoh-files '("Dropbox/org/kindle.org" "Dropbox/org/org.org"))
+    ;; (setq eoh-files '("Dropbox/org/org.org"))
+    ;; (setq eoh-files '("Dropbox/org/kindle.org"))
+    (setq eoh-headlines (eoh-load-headlines-always))
+    (length eoh-headlines)
+    #+END_SRC
+    
+    #+RESULTS:
+    : 164
+    
+    
+    
+    
+    #+NAME: load-headlines-deprecated
     #+BEGIN_SRC elisp
   (defun get-string-from-file (filePath)
     "Return filePath's file content."
@@ -38,35 +170,23 @@
     #+RESULTS:
     : ("/Users/astropeak/Dropbox/org/notes.org" 7834 "** [[http://www.zreading.cn/archives/4240.html][如何找到适合自己的读书方法]]   ")
     
-    
-**  process it with helm. 
+**  select headlines with helm. 
     can't goto the file.
+    
+    #+NAME: select-headlines
     #+BEGIN_SRC elisp
-    (setq eoh-tmp (mapcar (lambda (item)
-                            (cons (nth 2 item) item))
-                          eoh-headlines))
-
-    (setq eoh-selected-file nil)
-    (setq eoh-selected-line nil)
-    (setq eoh-selected-cadidate nil)
     (defun eoh-goto-file-line (candidate)
       (let ((file (nth 0 candidate))
             (line (nth 1 candidate)))
         (message "file: %s, line: %s" file line)
-        ;; (setq eoh-selected-file file
-        ;;       eoh-selected-line line
-        ;;       eoh-selected-candidate candidate)
-        (helm-goto-file-line line "" file)
-        (find-file file
-                   )
-        (helm-goto-line line
-                        )))
-    ;; (find-file-other-window file)
-    ;; (goto-line line)))
+        (helm-goto-file-line line "" (format "%s/%s" eoh-base-dir file))))
 
-    (setq some-helm-source
+    (setq eoh-helm-source
           '((name . "HELM at the Emacs")
-            (candidates .  eoh-tmp)
+            (candidates . (lambda ()
+                            (mapcar (lambda (item)
+                                      (cons (nth 2 item) item))
+                                    eoh-headlines)))
 
             ;; (subexp . 1)
             ;; (migemo)
@@ -79,56 +199,60 @@
             (action-transformer
              . (lambda (actions candidate)
                  '(("Godo" . eoh-goto-file-line)
-                 ;; '(("Godo" . (lambda (candidate)
-                 ;;               (setq eoh-selected-candidate candidate)))
+                   ;; '(("Godo" . (lambda (candidate)
+                   ;;               (setq eoh-selected-candidate candidate)))
                    ("Display" .  (lambda (candidate)
                                    (message-box "%S" candidate)))
                    ("None" . identify)
                    ))
              )))
-    (defun aoh-main ()
+
+    (defun eoh-select ()
+      "Select headlines with helm. input is `eoh-headlines'"
       (interactive)
-      (helm :sources '(some-helm-source) :buffer "EOH")
-      ;; (eoh-goto-file-line eoh-selected-candidate)
-      ;; (message "candidate:%S" eoh-selected-candidate)
-      ;; (find-file-other-window (nth 0 eoh-selected-candidate))
-      ;; (goto-line (nth 1 eoh-selected-candidate))
-      ;; (helm-log "XXXX")
-      ;; (switch-to-buffer "notes.org")
-      )
-    ;; (aoh-main)
+      (helm :sources '(eoh-helm-source) :buffer "EOH"))
     #+END_SRC
 
-    #+RESULTS:
-    : aoh-main
+    #+RESULTS: select-headlines
+    : eoh-select
 
     
-    
-    the function:
-    #+BEGIN_SRC elisp
-    (cl-defun helm-goto-file-line (lineno &optional content file (find-file-function #'find-file))
-(message "XXXXXXX")
-      (helm-aif (helm-attr 'before-jump-hook)
-          ;; (message "before: %S" it)
-          (funcall it))
-      ;; (when file (funcall find-file-function file))
-(find-file file)
-      ;; (if (helm-attr-defined 'adjust)
-          ;; (helm-goto-line-with-adjustment lineno content)
-        (helm-goto-line lineno)
-      ;; (unless (helm-attr-defined 'recenter)
-      ;;   (set-window-start (get-buffer-window helm-current-buffer) (point)))
-      ;; (helm-aif (helm-attr 'after-jump-hook)
-      ;;     ;; (message "after: %S" it)
-      ;;     (funcall it))
-      ;; (when helm-in-persistent-action
-      ;;   (helm-highlight-current-line))
-)
+** add files
+   #+NAME: add-files
+   #+BEGIN_SRC elisp
+   (defun eoh-add-file-single (file)
+     "Add a file to `eoh-files', and remove the base part"
+     (interactive "fFile: ")
+     (push (replace-regexp-in-string eoh-base-dir "" file) eoh-files)
+     )
+   #+END_SRC
 
+   #+RESULTS: add-files
+   : eoh-add-file-single
 
-    #+END_SRC
-    
-    #+RESULTS:
-    : helm-goto-file-line
-    
-    
+** integrate
+   #+BEGIN_SRC elisp
+   (defun eoh-always ()
+(interactive)
+     (eoh-generate-headlines-always eoh-files)
+     (setq eoh-headlines (eoh-load-headlines-always))
+     (eoh-select)
+     )
+   #+END_SRC
+
+   #+RESULTS:
+   : eoh-always
+
+** run
+
+   Deprecated
+   #+BEGIN_SRC elisp :noweb yes :tangle eoh.el :comments org
+   <<generate-headlines--windows>>
+   <<load-headlines>>
+   <<install-eoh-function>>
+   #+END_SRC
+   
+   #+RESULTS:
+   : eoh
+   
+   

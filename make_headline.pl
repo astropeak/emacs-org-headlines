@@ -1,5 +1,6 @@
-$file = $ARGV[0];
-open my $fh, "<$file";
+$dir = $ARGV[0];
+$file = $ARGV[1];
+open my $fh, "<$dir/$file";
 print "(\n";
 while (<$fh>) {
 	++$ln;
