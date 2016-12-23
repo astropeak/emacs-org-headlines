@@ -1,9 +1,21 @@
 * Implementation
 ** generate the headline file
    It works!! good
+   
+   For windows
    #+BEGIN_SRC elisp
    (setq aoh-tmp "c:/Users/luooofuq/Dropbox/org/notes.org")
    (shell-command "C:/Perl64/bin/perl.exe make_headline.pl  c:/Users/luooofuq/Dropbox/org/notes.org>headlines/data1")
+   #+END_SRC
+   
+   #+RESULTS:
+   : 0
+   
+   
+   For mac
+   #+BEGIN_SRC elisp
+   (setq aoh-tmp "c:/Users/luooofuq/Dropbox/org/notes.org")
+   (shell-command "perl make_headline.pl  /Users/astropeak/Dropbox/org/notes.org>headlines/data1")
    #+END_SRC
    
    #+RESULTS:
@@ -24,7 +36,8 @@
     #+END_SRC
     
     #+RESULTS:
-  : ("c:/Users/luooofuq/Dropbox/org/notes.org" 7834 "** [[http://www.zreading.cn/archives/4240.html][如何找到适合自己的读书方法]]   ")
+    : ("/Users/astropeak/Dropbox/org/notes.org" 7834 "** [[http://www.zreading.cn/archives/4240.html][如何找到适合自己的读书方法]]   ")
+    
     
 **  process it with helm. 
     can't goto the file.
@@ -33,11 +46,21 @@
                             (cons (nth 2 item) item))
                           eoh-headlines))
 
+    (setq eoh-selected-file nil)
+    (setq eoh-selected-line nil)
+    (setq eoh-selected-cadidate nil)
     (defun eoh-goto-file-line (candidate)
       (let ((file (nth 0 candidate))
             (line (nth 1 candidate)))
         (message "file: %s, line: %s" file line)
-        (helm-goto-file-line line "" file 'find-file-other-window)))
+        ;; (setq eoh-selected-file file
+        ;;       eoh-selected-line line
+        ;;       eoh-selected-candidate candidate)
+        (helm-goto-file-line line "" file)
+        (find-file file
+                   )
+        (helm-goto-line line
+                        )))
     ;; (find-file-other-window file)
     ;; (goto-line line)))
 
@@ -45,17 +68,67 @@
           '((name . "HELM at the Emacs")
             (candidates .  eoh-tmp)
 
-            (persistent-action . 'eoh-goto-file-line)
+            ;; (subexp . 1)
+            ;; (migemo)
+            ;; (persistent-action . 'eoh-goto-file-line)
+            ;; (persistent-action . (lambda (elm)
+            ;;                        (eoh-goto-file-line elm)
+            ;;                        (org-cycle)
+            ;;                        ))
 
-            (action .
-                    (("Godo" . eoh-goto-file-line)
-                     ("Display" .  (lambda (candidate)
-                                     (message-box "%S" candidate)))
-                     ("None" . identify)
-                     ))
-            ))
-    (helm :sources '(some-helm-source))
+            (action-transformer
+             . (lambda (actions candidate)
+                 '(("Godo" . eoh-goto-file-line)
+                 ;; '(("Godo" . (lambda (candidate)
+                 ;;               (setq eoh-selected-candidate candidate)))
+                   ("Display" .  (lambda (candidate)
+                                   (message-box "%S" candidate)))
+                   ("None" . identify)
+                   ))
+             )))
+    (defun aoh-main ()
+      (interactive)
+      (helm :sources '(some-helm-source) :buffer "EOH")
+      ;; (eoh-goto-file-line eoh-selected-candidate)
+      ;; (message "candidate:%S" eoh-selected-candidate)
+      ;; (find-file-other-window (nth 0 eoh-selected-candidate))
+      ;; (goto-line (nth 1 eoh-selected-candidate))
+      ;; (helm-log "XXXX")
+      ;; (switch-to-buffer "notes.org")
+      )
+    ;; (aoh-main)
+    #+END_SRC
+
+    #+RESULTS:
+    : aoh-main
+
+    
+    
+    the function:
+    #+BEGIN_SRC elisp
+    (cl-defun helm-goto-file-line (lineno &optional content file (find-file-function #'find-file))
+(message "XXXXXXX")
+      (helm-aif (helm-attr 'before-jump-hook)
+          ;; (message "before: %S" it)
+          (funcall it))
+      ;; (when file (funcall find-file-function file))
+(find-file file)
+      ;; (if (helm-attr-defined 'adjust)
+          ;; (helm-goto-line-with-adjustment lineno content)
+        (helm-goto-line lineno)
+      ;; (unless (helm-attr-defined 'recenter)
+      ;;   (set-window-start (get-buffer-window helm-current-buffer) (point)))
+      ;; (helm-aif (helm-attr 'after-jump-hook)
+      ;;     ;; (message "after: %S" it)
+      ;;     (funcall it))
+      ;; (when helm-in-persistent-action
+      ;;   (helm-highlight-current-line))
+)
+
+
     #+END_SRC
     
     #+RESULTS:
+    : helm-goto-file-line
+    
     
