@@ -6,10 +6,15 @@
    (defvar eoh-files nil "Type: list; element: string(file full path name). the files should be searched for headings. This is the input to generate-headlines.")
    (defvar eoh-headlines nil "Type: list; element: list(file-name, line-no, heading)")
    (defvar eoh-perl-executable "perl")
-(defvar eoh-home-dir (format "%s/%s" (getenv "HOME") ".emacs-org-headlines") "the data dir for the eoh applicaton. All generated headlines will be saved in this dir")
-(defvar eoh-headlines-dir (format "%s/headlines" eoh-home-dir) "the generated files by perl are all saved under this dir")
-(defvar eoh-perl-script-name "make_headline.pl" "the perl script that generate the headline files")
+   (defvar eoh-home-dir (format "%s/%s" (getenv "HOME") "Dropbox/Apps/emacs-org-headlines") "the data dir for the eoh applicaton. All generated headlines will be saved in this dir")
+   (defvar eoh-headlines-dir (format "%s/headlines" eoh-home-dir) "the generated files by perl are all saved under this dir")
+   (defvar eoh-perl-script-name "make_headline.pl" "the perl script that generate the headline files")
+   (defvar eoh-files-file-name (format "%s/%s" eoh-home-dir "files") "The file is used to save the `eoh-files' variable")
    #+END_SRC
+   
+   #+RESULTS: global-definition
+   : eoh-files-file-name
+   
 ** init
    #+NAME: init--windows
    #+BEGIN_SRC elisp
@@ -17,7 +22,7 @@
    #+END_SRC
    
    #+NAME: init
-   #+BEGIN_SRC elisp
+   #+BEGIN_SRC elisp :noweb yes
    (defun eoh-init ()
      (cond
       (*win32* <<init--windows>>)
@@ -37,7 +42,14 @@
    
    #+RESULTS: init
    : eoh-init
-** util function
+   
+   #+BEGIN_SRC elisp 
+(eoh-init)
+   #+END_SRC
+   
+   #+RESULTS:
+   
+** util
    #+NAME: util
    #+BEGIN_SRC elisp
    (defun aspk-util-file-name-to-string (name)
@@ -212,10 +224,10 @@
       (interactive)
       (helm :sources '(eoh-helm-source) :buffer "EOH"))
     #+END_SRC
-
+    
     #+RESULTS: select-headlines
     : eoh-select
-
+    
     
 ** add files
    #+NAME: add-files
@@ -223,13 +235,56 @@
    (defun eoh-add-file-single (file)
      "Add a file to `eoh-files', and remove the base part"
      (interactive "fFile: ")
-     (push (replace-regexp-in-string eoh-base-dir "" file) eoh-files)
+     (push (replace-regexp-in-string (concat eoh-base-dir "/") "" file) eoh-files)
+     (eoh-save-files)
      )
+   (defun eoh-clear-files ()
+     "Clear all eoh files"
+     (setq eoh-files nil)
+     )
+   (defun eoh-load-files ()
+     "load the file names to `eoh-files' from `eoh-files-file-name."
+     (load eoh-files-file-name)
+     )
+
+   (defun eoh-save-files ()
+     "save `eoh-files' to `eoh-files-file-name'"
+     (aspk-util-dump-vars-to-file '(eoh-files) eoh-files-file-name)
+     )
+
+   ;; http://stackoverflow.com/questions/2321904/elisp-how-to-save-data-in-a-file
+   (defun aspk-util-dump-vars-to-file (varlist filename)
+     "simplistic dumping of variables in VARLIST to a file FILENAME"
+     (save-excursion
+       (let ((buf (find-file-noselect filename)))
+         (set-buffer buf)
+         (erase-buffer)
+         (aspk-util-dump varlist buf)
+         (save-buffer)
+         (kill-buffer))))
+
+   (defun aspk-util-dump (varlist buffer)
+     "insert into buffer the setq statement to recreate the variables in VARLIST"
+     (loop for var in varlist do
+           (print (list 'setq var (list 'quote (symbol-value var)))
+                  buffer)))
+
    #+END_SRC
-
+   
    #+RESULTS: add-files
-   : eoh-add-file-single
-
+   : aspk-util-dump
+   
+   #+NAME: test-add-files
+   #+BEGIN_SRC elisp :noweb yes
+(eoh-save-files)
+(setq eoh-files nil)
+(eoh-load-files)
+(message "%S" eoh-files)
+   #+END_SRC
+   
+   #+RESULTS: test-add-files
+   : ("Dropbox/project/emacs-org-headline/implementation.org")
+   
 ** integrate
    #+BEGIN_SRC elisp
    (defun eoh-always ()
@@ -239,12 +294,12 @@
      (eoh-select)
      )
    #+END_SRC
-
+   
    #+RESULTS:
    : eoh-always
-
+   
 ** run
-
+   
    Deprecated
    #+BEGIN_SRC elisp :noweb yes :tangle eoh.el :comments org
    <<generate-headlines--windows>>
