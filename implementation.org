@@ -253,7 +253,8 @@
       (let ((file (nth 0 candidate))
             (line (nth 1 candidate)))
         (message "file: %s, line: %s" file line)
-        (helm-goto-file-line line "" (format "%s/%s" eoh-base-dir file))))
+        (helm-goto-file-line line "" (format "%s/%s" eoh-base-dir file))
+        (org-cycle 3)))
 
     (setq eoh-helm-source
           '((name . "HELM at the Emacs")
