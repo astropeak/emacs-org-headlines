@@ -1,0 +1,25 @@
+* Emacs Org Headlines
+  Selecting and goto org entries from many org files interactively.
+
+** Feature
+   - Based on helm, so the interactive process is quite good.
+   - Support many org files\\
+     The file list is saved in a file and get loaded when emacs start.
+   - Results are cached in harddisk\\
+   - Sync between many computers\\
+     By using relative paths, and putting the config file in a common places(such as Dropbox), you can use the software in the same way between many computers without additional works.
+
+** Basic usage
+   | function            | description                                                                |
+   |---------------------+----------------------------------------------------------------------------|
+   | eoh-add-file-single | add an org file to be searched. The added files will be saved.             |
+   | eoh                 | run this function, and start enter keywords that contains in org headlines |
+   |                     | the result will be show, and hit ENTER to goto that entry                  |
+     
+** Install
+   Just eval eoh.el in emacs.
+
+   To run you need perl installed.
+   
+** Implementation
+   The software is written with literate programming method. eoh.org is the source file, and eoh.el is generated from it.

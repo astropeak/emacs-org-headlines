@@ -1,4 +1,4 @@
-* Implementation
+* eoh
 ** global
    #+NAME: global-definition
    #+BEGIN_SRC elisp :comments org :tangle eoh.el
