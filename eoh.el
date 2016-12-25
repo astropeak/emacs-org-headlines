@@ -8,7 +8,7 @@
 (defvar eoh-perl-executable "perl")
 (defvar eoh-home-dir (format "%s/%s" (getenv "HOME") "Dropbox/Apps/emacs-org-headlines") "the data dir for the eoh applicaton. All generated headlines will be saved in this dir")
 (defvar eoh-headlines-dir (format "%s/headlines" eoh-home-dir) "the generated files by perl are all saved under this dir")
-(defvar eoh-perl-script-name (format "%s/%s" eoh-home-dir "make_headline.pl") "the perl script that generate the headline files")
+(defvar eoh-perl-script-name (format "%s/%s" (file-name-directory load-file-name) "make_headline.pl") "the perl script that generate the headline files")
 (defvar eoh-files-file-name (format "%s/%s" eoh-home-dir "files") "The file is used to save the `eoh-files' variable")
 
 ;; interface functions
@@ -221,3 +221,5 @@
   (setq eoh-headlines (funcall eoh-load-headlines-function))
   (eoh-select)
   )
+
+(provide 'eoh)
